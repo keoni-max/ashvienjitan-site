@@ -1,0 +1,49 @@
+name: Build & deploy
+
+# Rebuilds every morning so new sermons, books and agenda items appear
+# without anyone touching the site.
+on:
+  schedule:
+    - cron: "15 4 * * *"   # 06:15 Amsterdam (summer time)
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 build.py
+      # Keep the last good data so a build still works if a source is down.
+      - name: Commit refreshed data cache
+        run: |
+          git config user.name "site-bot"
+          git config user.email "site-bot@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "Update content cache" && git push
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
