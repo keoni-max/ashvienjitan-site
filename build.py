@@ -7,6 +7,8 @@ Sermons (YouTube), books (Faith Generation webshop) and the agenda are fetched
 fresh on every build; see sources.py. No third-party packages needed.
 """
 import datetime as dt
+import os
+import re
 import shutil
 from html import escape
 from pathlib import Path
@@ -15,6 +17,9 @@ import sources
 
 ROOT = Path(__file__).parent
 DIST = ROOT / "dist"
+# Path prefix when the site is served from a subfolder (e.g. username.github.io/repo).
+# Empty once the site runs on its own domain.
+BASE = os.environ.get("SITE_BASE", "").rstrip("/")
 
 FG = "https://faithgeneration.com"
 LINKS = {
@@ -504,6 +509,9 @@ def main():
     for path, html_out in pages.items():
         out = DIST / path
         out.parent.mkdir(parents=True, exist_ok=True)
+        if BASE:
+            html_out = re.sub(r'((?:href|src|srcset|poster|content)=")/(?!/)', rf"\g<1>{BASE}/", html_out)
+            html_out = html_out.replace("url('/", f"url('{BASE}/")
         out.write_text(html_out)
     print(f"Built {len(pages)} pages into {DIST}")
 
