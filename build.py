@@ -356,16 +356,16 @@ def home(sermons, books, events):
         for i, s in enumerate(HERO_SLIDES))
     reel = "".join(f'<button type="button"{" class=active" if i == 0 else ""}>{i + 1:02d} {e(s["label"])}</button>'
                    for i, s in enumerate(HERO_SLIDES))
-    words = ["Bijbelscholen", "Wonderen &amp; genezingen", "50+ boeken", "Gospeltrucks India", "Simpel onderwijs"]
+    words = ["Bijbelscholen", "Wonderen &amp; genezingen", "20 boeken", "Gospeltrucks India", "Simpel onderwijs"]
     marquee = "".join(f"<span>{w.upper()}</span>" for w in words * 2)
     shop_books = [b for b in books if b["num"] in (1, 6, 13, 16)] or [b for b in books if b["num"]][:4]
     main = f'''
 <section class="hero">
   <div class="hero-media" aria-hidden="true">{slides}</div>
   <div class="hero-content">
-    <p class="tag">Evangelist · Spreker · Schrijver · Oprichter Faith Generation</p>
+    <p class="tag">Evangelist · Spreker · Schrijver<span class="tag-more"> · Oprichter Faith Generation</span></p>
     <h1 class="display h-xl">Reviving a<br>generation of faith</h1>
-    <p class="hero-sub">Evangelist Ashvien Jitan legt de Bijbel zo simpel uit dat je er morgen mee aan de slag kunt. Bekijk zijn preken, bestel gratis boeken of nodig hem uit in jouw kerk.</p>
+    <p class="hero-sub">Simpel Bijbelonderwijs, gratis boeken en diensten waarin mensen genezing ervaren.</p>
     <div class="hero-foot">
       <div class="hero-buttons">
         <a class="btn btn-paper" href="/onderwijs/#preken">{icon('play')} Bekijk de laatste preek</a>
@@ -373,7 +373,6 @@ def home(sermons, books, events):
       </div>
       <div class="reel" aria-label="Beelden">{reel}</div>
     </div>
-    <a class="hero-invite link" href="{LINKS['invite']}"{ext(LINKS['invite'])}>Nodig Ashvien uit voor jouw kerk {icon('arrow-up-right')}</a>
   </div>
 </section>
 <div class="marquee" aria-hidden="true"><div class="marquee-track">{marquee}</div></div>
@@ -385,9 +384,9 @@ def home(sermons, books, events):
     <div class="about-text">
       <p class="lead">Ashvien Jitan is evangelist, spreker, schrijver en de oprichter van Faith Generation. Zijn missie is eenvoudig: een generatie van geloof opwekken.</p>
       <p class="body">Met een heldere en simpele manier van onderwijs geven helpt hij mensen om het Woord van God te begrijpen en toe te passen in hun dagelijks leven. Ashvien staat bekend om zijn passie voor de Here Jezus en de wonderen en genezingen die regelmatig plaatsvinden tijdens zijn diensten.</p>
-      <p class="body">Hij schreef tientallen boeken, leidt Bijbelscholen in verschillende landen en bereikt maandelijks honderdduizenden mensen via evangelisatieprojecten wereldwijd. Vooral in India, waar tientallen gospeltrucks bijna dagelijks het evangelie delen.</p>
+      <p class="body">Hij schreef twintig boeken, leidt Bijbelscholen in verschillende landen en bereikt maandelijks honderdduizenden mensen via evangelisatieprojecten wereldwijd. Vooral in India, waar tientallen gospeltrucks bijna dagelijks het evangelie delen.</p>
       <div class="stats">
-        <div class="stat"><b>50+</b><span>Boeken geschreven</span></div>
+        <div class="stat"><b>20</b><span>Boeken geschreven</span></div>
         <div class="stat"><b>14</b><span>Talen vertaald</span></div>
         <div class="stat"><b>40</b><span>Gospeltrucks in India</span></div>
         <div class="stat"><b class="red">200K+</b><span>Keuzes voor Jezus per maand, via de gospeltrucks</span></div>
@@ -406,7 +405,7 @@ def home(sermons, books, events):
 </section>
 
 <section class="section light">
-  <div class="section-head"><div><h2 class="display h-lg">50+ boeken.<br>Gratis voor iedereen.</h2></div>
+  <div class="section-head"><div><h2 class="display h-lg">20 boeken.<br>Gratis voor iedereen.</h2></div>
     <p class="aside body">De boeken worden vertaald in veertien talen en wereldwijd gratis uitgedeeld. Bestel ze direct via de webshop van Faith Generation.</p></div>
   <div class="books">{book_cards(shop_books)}</div>
   {package_banner(books)}
@@ -462,7 +461,7 @@ TIMELINE = [
     ("15 jaar", "De Levensstroom", "Na een jaar sluit hij zich aan bij de Levensstroom in Leiderdorp en bezoekt hij drie jaar lang bijna alle diensten van Jan Zijlstra. Daar wordt het verlangen geboren om te spreken en te bidden voor de zieken."),
     ("±10 jaar", "Assistent van Arno van der Knaap", "Als Arno van der Knaap, de geestelijke zoon van Jan Zijlstra, voorganger wordt, ondersteunt Ashvien hem bijna tien jaar lang in zijn bediening."),
     ("2022", "Ingezegend als evangelist", "In dezelfde periode spreekt God tegen Ashvien en geeft hem een duidelijke opdracht: “Ashvien, wek een generatie van geloof op.”"),
-    ("2023", "Stichting Faith Generation", "Sindsdien gaat het snel: meer dan vijftig boeken, vertaald in veertien talen en wereldwijd gratis uitgedeeld. Een driejarige fulltime Bijbelschool in India, online Bijbelscholen in verschillende talen en nieuwe bedieningen die uit Faith Generation voortkomen."),
+    ("2023", "Stichting Faith Generation", "Sindsdien gaat het snel: twintig boeken, vertaald in veertien talen en wereldwijd gratis uitgedeeld. Een driejarige fulltime Bijbelschool in India, online Bijbelscholen in verschillende talen en nieuwe bedieningen die uit Faith Generation voortkomen."),
     ("Nov 2025", "Veertig gospeltrucks", "Pastor Jaap Dieleman draagt de veertig gospeltrucks die dagelijks in India rijden over aan Ashvien. Maandelijks kiezen 200.000 tot 250.000 mensen voor de Here Jezus en worden ze direct verbonden met lokale kerken, waar ze het onderwijs van Ashvien kunnen volgen."),
 ]
 
@@ -598,7 +597,7 @@ def main():
     # Plain-text summary for AI assistants and answer engines (llms.txt convention).
     (DIST / "llms.txt").write_text(
         "# Ashvien Jitan\n\n> Nederlandse evangelist, spreker en schrijver; oprichter van Stichting Faith Generation. "
-        "Bekend om simpel Bijbelonderwijs en genezingsdiensten. Schreef 50+ boeken die gratis worden uitgedeeld "
+        "Bekend om simpel Bijbelonderwijs en genezingsdiensten. Schreef twintig boeken die gratis worden uitgedeeld "
         "en leidt 40 gospeltrucks in India.\n\n## Pagina's\n"
         f"- [Over Ashvien]({SITE_URL}/over-ashvien/): levensverhaal, overzienerschap en bediening\n"
         f"- [Onderwijs]({SITE_URL}/onderwijs/): nieuwste preken, Faith Teachings, podcast, Bijbelscholen\n"
