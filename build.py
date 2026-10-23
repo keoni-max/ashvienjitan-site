@@ -235,9 +235,10 @@ def page(title, description, current, main, head_inside=False, schema=(), preloa
 {pre}{ld}
 </head>
 <body>
+<a class="skip-link" href="#inhoud">Naar de inhoud</a>
 {'' if head_inside else header(current)}
 {mobile_menu()}
-<main>
+<main id="inhoud">
 {main}
 </main>
 {footer()}
