@@ -116,7 +116,7 @@ def header(current, solid=False):
         f'<a href="{href}"{ext(href)}{" aria-current=page" if href == current else ""}>{e(label)}</a>'
         for label, href in NAV)
     return f'''<header class="site-header{' solid' if solid else ''}">
-  <a class="logo" href="/" aria-label="Ashvien Jitan — home"><img src="/logo/aj-lockup-op-donker.svg" alt="Ashvien Jitan" width="228" height="56"></a>
+  <a class="logo" href="/" aria-label="Ashvien Jitan — home"><img src="/logo/aj-lockup-op-donker.svg" alt="Ashvien Jitan" width="246" height="64"></a>
   <nav class="nav" aria-label="Hoofdmenu">{links}
     <a class="btn btn-red" href="{LINKS['invite']}"{ext(LINKS['invite'])}>Nodig Ashvien uit {icon('arrow-up-right')}</a>
     <button class="menu-toggle" type="button" aria-label="Menu openen" aria-expanded="false" aria-controls="mobile-menu">{icon('menu')}</button>
@@ -172,7 +172,7 @@ def footer():
     return f'''<footer class="site-footer">
   <div class="foot-top">
     <div class="foot-brand">
-      <img src="/logo/aj-lockup-op-donker.svg" alt="Ashvien Jitan" width="228" height="56">
+      <img src="/logo/aj-lockup-op-donker.svg" alt="Ashvien Jitan" width="246" height="64">
       <p>Ontvang nieuwe preken en boeken in je inbox via de nieuwsbrief van Faith Generation.</p>
       <a class="link" href="{LINKS['newsletter']}" target="_blank" rel="noopener">Schrijf je in {icon('arrow-up-right')}</a>
     </div>
