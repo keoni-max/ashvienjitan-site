@@ -32,6 +32,7 @@ jobs:
       - run: python3 build.py
         env:
           SITE_BASE: ${{ steps.pages.outputs.base_path }}
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
       # Keep the last good data so a build still works if a source is down.
       - name: Commit refreshed data cache
         run: |

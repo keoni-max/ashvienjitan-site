@@ -7,9 +7,11 @@ Sermons (YouTube), books (Faith Generation webshop) and the agenda are fetched
 fresh on every build; see sources.py. No third-party packages needed.
 """
 import datetime as dt
+import json
 import os
 import re
 import shutil
+from zoneinfo import ZoneInfo
 from html import escape
 from pathlib import Path
 
@@ -20,6 +22,8 @@ DIST = ROOT / "dist"
 # Path prefix when the site is served from a subfolder (e.g. username.github.io/repo).
 # Empty once the site runs on its own domain.
 BASE = os.environ.get("SITE_BASE", "").rstrip("/")
+# Absolute address of the site, for canonical links, social previews and the sitemap.
+SITE_URL = os.environ.get("SITE_URL", "https://ashvienjitan.nl").rstrip("/")
 
 FG = "https://faithgeneration.com"
 LINKS = {
@@ -40,6 +44,8 @@ LINKS = {
     "facebook": "https://www.facebook.com/faithgeneration.ministry/",
     "newsletter": f"{FG}/",
     "privacy": f"{FG}/privacyverklaring/",
+    "testimonies": f"{FG}/getuigenissen/",
+    "anbi": f"{FG}/anbi-status/",
 }
 
 # Homepage reel. Add `"video": "/video/xyz.mp4"` to a slide once the clip exists;
@@ -125,7 +131,7 @@ def mobile_menu():
              ("Webshop", "/webshop/"), ("Agenda", "/#agenda"), ("Geven", LINKS["give"]), ("Contact", LINKS["contact"])]
     rows = []
     for n, (label, target) in enumerate(items, 1):
-        num = f'<span class="n">{n:02d}</span><span class="t">{e(label)}</span>'
+        num = f'<span class="t">{e(label)}</span>'
         if isinstance(target, list):
             sub = "".join(f'<li><a href="{h}"{ext(h)}>{e(l)} {icon("arrow-right")}</a></li>' for l, h in target)
             rows.append(f'<li><button class="mm-row" type="button" data-sub="mm-sub-{n}" aria-expanded="false">{num}'
@@ -186,7 +192,24 @@ def footer():
 </footer>'''
 
 
-def page(title, description, current, main, head_inside=False):
+def json_ld(data):
+    body = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")  # never close the script tag early
+    return f'<script type="application/ld+json">{body}</script>'
+
+
+PERSON = {
+    "@type": "Person", "@id": f"{SITE_URL}/#ashvien", "name": "Ashvien Jitan",
+    "jobTitle": "Evangelist", "description": "Evangelist, spreker, schrijver en oprichter van Faith Generation.",
+    "url": f"{SITE_URL}/", "image": f"{SITE_URL}/img/portret-prediking.jpg",
+    "worksFor": {"@type": "Organization", "name": "Stichting Faith Generation", "url": FG},
+    "sameAs": [LINKS["youtube"], LINKS["instagram"], LINKS["facebook"], FG],
+}
+
+
+def page(title, description, current, main, head_inside=False, schema=(), preload=None, noindex=False):
+    url = f"{SITE_URL}{current}"
+    ld = "".join(json_ld({"@context": "https://schema.org", **d}) for d in schema)
+    pre = f'<link rel="preload" as="image" href="{preload}" fetchpriority="high">' if preload else ""
     return f'''<!doctype html>
 <html lang="nl">
 <head>
@@ -194,15 +217,22 @@ def page(title, description, current, main, head_inside=False):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(title)}</title>
 <meta name="description" content="{e(description)}">
+{'<meta name="robots" content="noindex">' if noindex else f'<link rel="canonical" href="{url}">'}
+<meta property="og:type" content="website">
+<meta property="og:locale" content="nl_NL">
+<meta property="og:site_name" content="Ashvien Jitan">
+<meta property="og:url" content="{url}">
 <meta property="og:title" content="{e(title)}">
 <meta property="og:description" content="{e(description)}">
-<meta property="og:image" content="/img/hero.jpg">
+<meta property="og:image" content="{SITE_URL}/img/hero.jpg">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0b0b0b">
 <link rel="icon" href="/logo/aj-favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/logo/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
+{pre}{ld}
 </head>
 <body>
 {'' if head_inside else header(current)}
@@ -219,8 +249,8 @@ def page(title, description, current, main, head_inside=False):
 
 # ---------- Reusable blocks ----------
 
-def eyebrow(num, label):
-    return f'<div class="eyebrow"><span class="num">{num}</span><span class="label">{label}</span></div>'
+def eyebrow(label):
+    return f'<p class="eyebrow label red">{label}</p>'
 
 
 def sermon_block(sermons, list_count=4):
@@ -266,7 +296,7 @@ def book_cards(books, eager=0):
       <div class="cover">{cover}</div>
       <div class="meta small-label"><span class="mute">{num}</span><span class="red">{e(b['price'])}</span></div>
       <h3>{e(b['title'])}</h3>
-      <span class="order">Bestellen {icon('arrow-up-right')}</span></a>''')
+      <span class="order">Bestel gratis {icon('arrow-up-right')}</span></a>''')
     return "".join(cards)
 
 
@@ -297,6 +327,28 @@ def agenda_block(events, limit=None):
 
 # ---------- Pages ----------
 
+def event_schema(events):
+    out = []
+    for ev in events:
+        if not ev.get("first"):
+            continue
+        times = [m.group(0) for t, _ in ev["sessions"] if (m := re.search(r"\d{1,2}:\d{2}", t))]
+        start = ev["first"]
+        if times:
+            h, m = map(int, times[0].split(":"))
+            start = dt.datetime.combine(dt.date.fromisoformat(ev["first"]), dt.time(h, m),
+                                        ZoneInfo("Europe/Amsterdam")).isoformat()
+        out.append({"@type": "Event", "name": f'{ev["title"]} met Ashvien Jitan', "startDate": start,
+                    "endDate": ev.get("last") or ev["first"],
+                    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+                    "eventStatus": "https://schema.org/EventScheduled",
+                    "location": {"@type": "Place", "name": ev["title"], "address": ev["place"] or ev["title"]},
+                    "performer": {"@id": f"{SITE_URL}/#ashvien"},
+                    "organizer": {"@type": "Organization", "name": "Stichting Faith Generation", "url": FG},
+                    "url": ev["ticket"] or LINKS["agenda"]})
+    return out
+
+
 def home(sermons, books, events):
     slides = "".join(
         (f'<video src="{s["video"]}" poster="{s["img"]}" muted playsinline loop preload="none"></video>' if s.get("video")
@@ -313,6 +365,7 @@ def home(sermons, books, events):
   <div class="hero-content">
     <p class="tag">Evangelist · Spreker · Schrijver · Oprichter Faith Generation</p>
     <h1 class="display h-xl">Reviving a<br>generation of faith</h1>
+    <p class="hero-sub">Evangelist Ashvien Jitan legt de Bijbel zo simpel uit dat je er morgen mee aan de slag kunt. Bekijk zijn preken, bestel gratis boeken of nodig hem uit in jouw kerk.</p>
     <div class="hero-foot">
       <div class="hero-buttons">
         <a class="btn btn-paper" href="/onderwijs/#preken">{icon('play')} Bekijk de laatste preek</a>
@@ -320,23 +373,24 @@ def home(sermons, books, events):
       </div>
       <div class="reel" aria-label="Beelden">{reel}</div>
     </div>
+    <a class="hero-invite link" href="{LINKS['invite']}"{ext(LINKS['invite'])}>Nodig Ashvien uit voor jouw kerk {icon('arrow-up-right')}</a>
   </div>
 </section>
 <div class="marquee" aria-hidden="true"><div class="marquee-track">{marquee}</div></div>
 
 <section class="section light">
-  <div class="section-head"><h2 class="display h-lg">Een generatie<br>van geloof opwekken.</h2>{eyebrow('01', 'Over Ashvien')}</div>
+  <div class="section-head"><h2 class="display h-lg">Een generatie<br>van geloof opwekken.</h2>{eyebrow('Over Ashvien')}</div>
   <div class="about-grid">
-    <img class="photo" src="/img/portret-prediking.jpg" alt="Ashvien Jitan preekt achter een kansel" loading="lazy">
+    <img class="photo" src="/img/portret-prediking.jpg" alt="Evangelist Ashvien Jitan preekt achter een kansel" loading="lazy" width="1280" height="1920">
     <div class="about-text">
       <p class="lead">Ashvien Jitan is evangelist, spreker, schrijver en de oprichter van Faith Generation. Zijn missie is eenvoudig: een generatie van geloof opwekken.</p>
       <p class="body">Met een heldere en simpele manier van onderwijs geven helpt hij mensen om het Woord van God te begrijpen en toe te passen in hun dagelijks leven. Ashvien staat bekend om zijn passie voor de Here Jezus en de wonderen en genezingen die regelmatig plaatsvinden tijdens zijn diensten.</p>
-      <p class="body">Hij schreef tientallen boeken, leidt Bijbelscholen in verschillende landen en bereikt maandelijks honderdduizenden mensen via evangelisatieprojecten wereldwijd — met name in India, waar tientallen gospeltrucks bijna dagelijks het evangelie delen.</p>
+      <p class="body">Hij schreef tientallen boeken, leidt Bijbelscholen in verschillende landen en bereikt maandelijks honderdduizenden mensen via evangelisatieprojecten wereldwijd. Vooral in India, waar tientallen gospeltrucks bijna dagelijks het evangelie delen.</p>
       <div class="stats">
         <div class="stat"><b>50+</b><span>Boeken geschreven</span></div>
         <div class="stat"><b>14</b><span>Talen vertaald</span></div>
         <div class="stat"><b>40</b><span>Gospeltrucks in India</span></div>
-        <div class="stat"><b class="red">250K</b><span>Keuzes voor Jezus / maand</span></div>
+        <div class="stat"><b class="red">200K+</b><span>Keuzes voor Jezus per maand, via de gospeltrucks</span></div>
       </div>
       <p><a class="link" href="/over-ashvien/">Lees het hele verhaal {icon('arrow-right')}</a></p>
     </div>
@@ -344,7 +398,7 @@ def home(sermons, books, events):
 </section>
 
 <section class="section dark" id="onderwijs">
-  <div class="section-head"><div>{eyebrow('02', 'Onderwijs')}<h2 class="display h-lg">Simpel onderwijs.<br>Krachtig woord.</h2></div>
+  <div class="section-head"><div><h2 class="display h-lg">Elke week<br>nieuwe preken.</h2></div>
     <nav class="tabs" aria-label="Onderwijs">
       <a class="active" href="/onderwijs/#preken">Preken</a><a href="{LINKS['teachings']}"{ext(LINKS['teachings'])}>Faith Teachings</a>
       <a href="{LINKS['podcast']}"{ext(LINKS['podcast'])}>Podcast</a><a href="{LINKS['bibleschool']}"{ext(LINKS['bibleschool'])}>Bijbelscholen</a></nav></div>
@@ -352,7 +406,7 @@ def home(sermons, books, events):
 </section>
 
 <section class="section light">
-  <div class="section-head"><div>{eyebrow('03', 'Webshop')}<h2 class="display h-lg">50+ boeken.<br>Gratis voor iedereen.</h2></div>
+  <div class="section-head"><div><h2 class="display h-lg">50+ boeken.<br>Gratis voor iedereen.</h2></div>
     <p class="aside body">De boeken worden vertaald in veertien talen en wereldwijd gratis uitgedeeld. Bestel ze direct via de webshop van Faith Generation.</p></div>
   <div class="books">{book_cards(shop_books)}</div>
   {package_banner(books)}
@@ -360,13 +414,14 @@ def home(sermons, books, events):
 
 <section class="band" style="background-image:url('/img/gospeltruck-india.jpg')">
   <div class="band-inner">
-    <div>{eyebrow('04', 'Gospeltrucks India')}<h2 class="display h-lg">40 trucks.<br>Elke dag het evangelie.</h2></div>
-    <div class="stat-big"><b>200.000 – 250.000</b><p>mensen per maand kiezen voor de Here Jezus en worden direct verbonden met een lokale kerk.</p></div>
+    <div>{eyebrow('Gospeltrucks India')}<h2 class="display h-lg">40 trucks.<br>Elke dag het evangelie.</h2></div>
+    <div class="stat-big"><b>200.000 – 250.000</b><p>mensen per maand kiezen voor de Here Jezus en worden direct verbonden met een lokale kerk.</p>
+      <p style="margin-top:20px"><a class="link" href="{LINKS['testimonies']}" target="_blank" rel="noopener">Lees getuigenissen {icon('arrow-up-right')}</a></p></div>
   </div>
 </section>
 
 <section class="section dark" id="agenda">
-  <div class="section-head"><div>{eyebrow('05', 'Agenda')}<h2 class="display h-lg">Kom langs.</h2></div>
+  <div class="section-head"><div>{eyebrow('Agenda')}<h2 class="display h-lg">Kom langs.</h2></div>
     <a class="link" href="{LINKS['agenda']}" target="_blank" rel="noopener">Volledige agenda {icon('arrow-up-right')}</a></div>
   {agenda_block(events, limit=6)}
 </section>
@@ -374,26 +429,32 @@ def home(sermons, books, events):
 <section class="section light">
   <div class="split">
     <div class="card card-photo" style="background-image:url('/img/genezing.jpg')">
-      <span class="label red">06 — Nodig Ashvien uit</span>
+      <span class="label red">Nodig Ashvien uit</span>
       <h2 class="display h-md">Een genezingsdienst,<br>seminar of conferentie?</h2>
       <p class="body">Ashvien spreekt in kerken, op conferenties en evangelisatie-events in binnen- en buitenland.</p>
+      <p class="body">Ashvien staat onder overzienerschap van pastor Jaap Dieleman.</p>
+      <ul class="formats"><li>Genezingsdiensten</li><li>Seminars &amp; trainingen</li><li>Conferenties</li><li>Revival-weekenden</li></ul>
       <p><a class="btn btn-red" href="{LINKS['invite']}"{ext(LINKS['invite'])}>Spreekverzoek indienen {icon('arrow-up-right')}</a></p>
     </div>
     <div class="card card-dark">
-      <div style="display:grid;gap:24px"><span class="label red">07 — Geven</span>
+      <div style="display:grid;gap:24px"><span class="label red">Geven</span>
         <h2 class="display h-md">Bouw mee aan een<br>generatie van geloof.</h2>
         <p class="body">Ashviens salaris wordt volledig betaald uit zijn eigen bedrijven. Elke gift gaat dus rechtstreeks naar boeken, Bijbelscholen en gospeltrucks.</p></div>
       <ul class="options">
         <li><a href="{LINKS['give_partner']}" target="_blank" rel="noopener">Maandelijks partner worden {icon('arrow-right')}</a></li>
         <li><a href="{LINKS['give_truck']}" target="_blank" rel="noopener">Sponsor een gospeltruck {icon('arrow-right')}</a></li>
-        <li><a href="{LINKS['give_big']}" target="_blank" rel="noopener">Eenmalige gift (ANBI) {icon('arrow-right')}</a></li></ul>
+        <li><a href="{LINKS['give_big']}" target="_blank" rel="noopener">Eenmalige gift {icon('arrow-right')}</a></li></ul>
+      <p class="small-label mute anbi"><a href="{LINKS['anbi']}" target="_blank" rel="noopener">Faith Generation heeft de ANBI-status. Je gift is fiscaal aftrekbaar.</a></p>
     </div>
   </div>
 </section>
 {jesus_cta()}'''
-    return page("Ashvien Jitan — Evangelist, spreker en schrijver",
-                "Ashvien Jitan is evangelist, spreker, schrijver en oprichter van Faith Generation. Preken, boeken, agenda en meer.",
-                "/", main)
+    return page("Ashvien Jitan | Evangelist, spreker en schrijver",
+                "Evangelist Ashvien Jitan, oprichter van Faith Generation. Bekijk preken en genezingsdiensten, bestel gratis christelijke boeken en zie waar hij spreekt.",
+                "/", main, preload="/img/hero.jpg",
+                schema=[{"@graph": [PERSON, {"@type": "WebSite", "@id": f"{SITE_URL}/#website", "url": f"{SITE_URL}/",
+                                            "name": "Ashvien Jitan", "inLanguage": "nl-NL", "publisher": {"@id": f"{SITE_URL}/#ashvien"}}]},
+                        *event_schema(events)])
 
 
 TIMELINE = [
@@ -420,9 +481,9 @@ def about():
 <section class="section light">
   <div class="story">
     <div class="story-intro">
-      <span class="label red">01 — Hoe het allemaal begon</span>
+      <span class="label red">Hoe het allemaal begon</span>
       <h2 class="display" style="font-size:clamp(46px,5vw,72px)">Van bekeerling tot evangelist.</h2>
-      <p class="body">Ashvien is niet christelijk opgevoed. Op veertienjarige leeftijd kwam hij tot bekering — en vanaf dat moment groeide er één verlangen: spreken over Jezus en bidden voor de zieken.</p>
+      <p class="body">Ashvien is niet christelijk opgevoed. Op veertienjarige leeftijd kwam hij tot bekering. Vanaf dat moment groeide er één verlangen: spreken over Jezus en bidden voor de zieken.</p>
       <img src="/img/gebed.jpg" alt="Ashvien bidt voor mensen tijdens een dienst" loading="lazy">
     </div>
     <ol class="timeline">{tl}</ol>
@@ -430,11 +491,10 @@ def about():
 </section>
 
 <section class="section dark">
-  <span class="label red">02 — Waar Ashvien om bekend staat</span>
-  <h2 class="display h-lg" style="margin:20px 0 64px">Simpel. Krachtig. Bovennatuurlijk.</h2>
+  <h2 class="display h-lg" style="margin:0 0 64px">Waar Ashvien<br>om bekend staat.</h2>
   <div class="known">
     <div><img src="/img/onderwijs.jpg" alt="Ashvien geeft les" loading="lazy"><h3>Simpel onderwijs</h3>
-      <p class="body">God heeft Ashvien duidelijk de gave gegeven om te onderwijzen. Dingen die simpel zijn, weet hij nog simpeler uit te leggen — en dingen die moeilijk zijn, worden juist makkelijk gemaakt.</p></div>
+      <p class="body">God heeft Ashvien duidelijk de gave gegeven om te onderwijzen. Dingen die simpel zijn, weet hij nog simpeler uit te leggen. Dingen die moeilijk zijn, maakt hij juist makkelijk.</p></div>
     <div><img src="/img/genezingsdienst.jpg" alt="Genezingsdienst met mensen die hun handen opheffen" loading="lazy"><h3>Wonderen &amp; tekenen</h3>
       <p class="body">Ashvien vloeit in de profetische gave en in zijn diensten zijn altijd sterke wonderen en tekenen zichtbaar. Mensen worden door Gods liefde genezen van de meest heftige kwalen.</p></div>
   </div>
@@ -442,15 +502,17 @@ def about():
 
 <section class="section light">
   <div class="blocks">
-    <div><span class="num">03</span><h3>Iedere leider heeft een leider nodig.</h3>
-      <p class="body">Pastor Jaap Dieleman is officieel de overziener van Faith Generation en van Ashvien Jitan. Zo is niemand in het lichaam van Christus onafhankelijk — we hebben elkaar namelijk nodig.</p></div>
-    <div><span class="num">04</span><h3>Naast de bediening.</h3>
+    <div><h3>Iedere leider heeft een leider nodig.</h3>
+      <p class="body">Pastor Jaap Dieleman is officieel de overziener van Faith Generation en van Ashvien Jitan. Zo is niemand in het lichaam van Christus onafhankelijk. We hebben elkaar namelijk nodig.</p></div>
+    <div><h3>Naast de bediening.</h3>
       <p class="body">Ashvien is naast de bediening ook eigenaar van een aantal bedrijven. In 2018 startte hij zijn eerste bedrijf; inmiddels zijn dat meerdere bedrijven die de bediening helpen financieren en zijn volledige salaris betalen.</p></div>
   </div>
 </section>
 {jesus_cta()}'''
-    return page("Over Ashvien Jitan", "Het verhaal van evangelist Ashvien Jitan: van bekering op zijn veertiende tot Faith Generation en de gospeltrucks in India.",
-                "/over-ashvien/", main, head_inside=True)
+    return page("Over Ashvien Jitan | Evangelist en oprichter Faith Generation",
+                "Het verhaal van evangelist Ashvien Jitan: van bekering op zijn veertiende tot Faith Generation, Bijbelscholen en veertig gospeltrucks in India.",
+                "/over-ashvien/", main, head_inside=True, preload="/img/prediking-podium.jpg",
+                schema=[{"@type": "AboutPage", "url": f"{SITE_URL}/over-ashvien/", "mainEntity": PERSON}])
 
 
 def shop(books):
@@ -470,8 +532,13 @@ def shop(books):
   {package_banner(books)}
   <p class="auto-note">{icon('refresh')} Boeken worden automatisch bijgewerkt vanuit de webshop van Faith Generation</p>
 </section>'''
-    return page("Boeken van Ashvien Jitan — gratis", "Alle boeken van Ashvien Jitan, gratis te bestellen via de webshop van Faith Generation.",
-                "/webshop/", main, head_inside=True)
+    return page("Gratis christelijke boeken van Ashvien Jitan | Webshop",
+                f"{len(numbered)} christelijke boeken van Ashvien Jitan over geloof, gebed en genezing. Gratis te bestellen via de webshop van Faith Generation.",
+                "/webshop/", main, head_inside=True,
+                schema=[{"@type": "ItemList", "name": "Boeken van Ashvien Jitan", "itemListElement": [
+                    {"@type": "ListItem", "position": i, "item": {"@type": "Book", "name": b["title"], "url": b["url"],
+                     "author": {"@id": f"{SITE_URL}/#ashvien"}, "inLanguage": "nl", **({"image": b["cover"]} if b["cover"] else {})}}
+                    for i, b in enumerate(numbered, 1)]}])
 
 
 def teaching(sermons):
@@ -481,7 +548,7 @@ def teaching(sermons):
              ("03", "Podcast", "Onderwijs om onderweg te luisteren, in meerdere talen.", LINKS["podcast"], "/img/prediking-podium.jpg"),
              ("04", "Bijbelscholen", "Een fulltime Bijbelschool in India en online Bijbelscholen in verschillende talen.", LINKS["bibleschool"], "/img/gebed.jpg")]
     cards = "".join(f'''<a class="channel" href="{h}"{ext(h)} style="background-image:url('{img}')">
-      <div class="top"><span class="display red" style="font-size:22px">{n}</span>{icon('arrow-up-right')}</div>
+      <div class="top">{icon('arrow-up-right')}</div>
       <div><h3>{t}</h3><p>{d}</p></div></a>''' for n, t, d, h, img in chans)
     main = f'''
 <section class="page-head dark">
@@ -494,8 +561,13 @@ def teaching(sermons):
   {sermon_block(sermons, list_count=6)}
 </section>
 {jesus_cta()}'''
-    return page("Onderwijs — Ashvien Jitan", "Preken, Faith Teachings, podcast en Bijbelscholen van Ashvien Jitan.",
-                "/onderwijs/", main, head_inside=True)
+    return page("Preken en onderwijs van Ashvien Jitan",
+                "Bekijk de nieuwste preken, genezingsdiensten en Faith Teachings van evangelist Ashvien Jitan, plus podcast en Bijbelscholen.",
+                "/onderwijs/", main, head_inside=True,
+                schema=[{"@type": "VideoObject", "name": sources.clean_title(s["title"]), "description": s["title"],
+                         "thumbnailUrl": yt_thumb(s["id"], "hqdefault"), "uploadDate": s["date"],
+                         "embedUrl": f"https://www.youtube-nocookie.com/embed/{s['id']}",
+                         "url": f"https://www.youtube.com/watch?v={s['id']}"} for s in sermons[:7]])
 
 
 def main():
@@ -506,13 +578,34 @@ def main():
     shutil.copytree(ROOT / "static", DIST)
     pages = {"index.html": home(sermons, books, events), "over-ashvien/index.html": about(),
              "webshop/index.html": shop(books), "onderwijs/index.html": teaching(sermons)}
-    for path, html_out in pages.items():
+    not_found = page("Pagina niet gevonden | Ashvien Jitan", "Deze pagina bestaat niet (meer).", "/404.html", f'''
+<section class="page-head dark">{header('')}
+  <span class="label crumb red">404</span><h1 class="display h-xl">Deze pagina<br>bestaat niet.</h1>
+  <p style="margin-top:32px"><a class="btn btn-red" href="/">Naar de homepage {icon('arrow-right')}</a></p>
+</section>''', head_inside=True, noindex=True)
+    for path, html_out in {**pages, "404.html": not_found}.items():
         out = DIST / path
         out.parent.mkdir(parents=True, exist_ok=True)
         if BASE:
             html_out = re.sub(r'((?:href|src|srcset|poster|content)=")/(?!/)', rf"\g<1>{BASE}/", html_out)
             html_out = html_out.replace("url('/", f"url('{BASE}/")
         out.write_text(html_out)
+    today = dt.date.today().isoformat()
+    urls = "".join(f"<url><loc>{SITE_URL}/{p.removesuffix('index.html')}</loc><lastmod>{today}</lastmod></url>"
+                   for p in pages)
+    (DIST / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>'
+                                      f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n')
+    # Plain-text summary for AI assistants and answer engines (llms.txt convention).
+    (DIST / "llms.txt").write_text(
+        "# Ashvien Jitan\n\n> Nederlandse evangelist, spreker en schrijver; oprichter van Stichting Faith Generation. "
+        "Bekend om simpel Bijbelonderwijs en genezingsdiensten. Schreef 50+ boeken die gratis worden uitgedeeld "
+        "en leidt 40 gospeltrucks in India.\n\n## Pagina's\n"
+        f"- [Over Ashvien]({SITE_URL}/over-ashvien/): levensverhaal, overzienerschap en bediening\n"
+        f"- [Onderwijs]({SITE_URL}/onderwijs/): nieuwste preken, Faith Teachings, podcast, Bijbelscholen\n"
+        f"- [Webshop]({SITE_URL}/webshop/): alle gratis boeken, te bestellen via faithgeneration.com\n"
+        f"- [Agenda]({LINKS['agenda']}): diensten en events waar Ashvien spreekt\n"
+        f"- [Nodig Ashvien uit]({LINKS['invite']}): spreekverzoek indienen\n")
+    (DIST / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {SITE_URL}/sitemap.xml\n")
     print(f"Built {len(pages)} pages into {DIST}")
 
 
