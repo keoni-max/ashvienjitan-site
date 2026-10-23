@@ -99,6 +99,11 @@ def _books():
             price = re.search(r'class="price">(.*?)</p>', tail, re.S)
             price = " ".join(html.unescape(re.sub("<[^>]+>", " ", price.group(1))).split()) if price else ""
             cover = re.search(r'&quot;url&quot;:&quot;(https:[^&]+?\.(?:png|jpe?g|webp))', tail)
+            if not cover:
+                # Simple products have no variation data; use the card's first slide instead.
+                head = s[max(0, m.start() - 12000):m.start()]
+                head = head[head.rfind("product_card-title") + 1:]
+                cover = re.search(r'(?:data-src|src)="(https://[^"]+/wp-content/uploads/[^"]+?(?<!-\d{3}x\d{3})\.(?:png|jpe?g|webp))"', head)
             num = re.match(r"Boek\s+(\d+)\s*\|\s*(.*)", title)
             out.append({
                 "num": int(num.group(1)) if num else None,

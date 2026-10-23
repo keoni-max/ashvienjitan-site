@@ -96,11 +96,6 @@ def ext(href):
     return ' target="_blank" rel="noopener"' if href.startswith("http") else ""
 
 
-def nl_date(iso):
-    d = dt.date.fromisoformat(iso)
-    return f"{d.day} {MONTHS_NL[d.month - 1]} {d.year}"
-
-
 def yt_thumb(vid, size="hqdefault"):
     return f"https://i.ytimg.com/vi/{vid}/{size}.jpg"
 
@@ -108,19 +103,43 @@ def yt_thumb(vid, size="hqdefault"):
 # ---------- Shared chrome ----------
 
 NAV = [("Over Ashvien", "/over-ashvien/"), ("Onderwijs", "/onderwijs/"), ("Webshop", "/webshop/"),
-       ("Geven", LINKS["give"]), ("Contact", LINKS["contact"])]
+       ("Agenda", "/#agenda"), ("Geven", LINKS["give"])]
+
+MOMENTS = [  # Black-and-white collage on the homepage: (file, alt text)
+    ("moment-1.jpg", "Ashvien bidt voor iemand tijdens een dienst"),
+    ("moment-2.jpg", "Menigte bij een evangelisatie-event in India"),
+    ("moment-3.jpg", "Ashvien preekt vanaf een podium"),
+    ("moment-4.jpg", "Aanbidding in een volle kerk"),
+    ("moment-5.jpg", "Iemand heft de handen op in aanbidding"),
+    ("moment-6.jpg", "Jongeren bidden tijdens een dienst"),
+    ("moment-7.jpg", "Ashvien lacht op het podium"),
+    ("moment-8.jpg", "Ashvien onderwijst een zaal vol mensen"),
+    ("moment-9.jpg", "Gebed voor een bezoeker"),
+    ("moment-10.jpg", "Menigte bij een gospeltruck in India"),
+]
 
 
-def header(current, solid=False):
+def pill(label, href, kind="ghost", ico=None, cls=""):
+    """Rounded button. kind: mint | ink | ghost (light outline) | ghost-dark."""
+    i = icon(ico) if ico else ""
+    return f'<a class="pill pill-{kind} {cls}" href="{e(href)}"{ext(href)}>{i if ico == "play" else ""}{e(label)}{"" if ico == "play" else i}</a>'
+
+
+def kicker(text):
+    return f'<p class="kicker">{text}</p>'
+
+
+def header(current):
     links = "".join(
         f'<a href="{href}"{ext(href)}{" aria-current=page" if href == current else ""}>{e(label)}</a>'
         for label, href in NAV)
-    return f'''<header class="site-header{' solid' if solid else ''}">
-  <a class="logo" href="/" aria-label="Ashvien Jitan — home"><img src="/logo/aj-lockup-op-donker.svg" alt="Ashvien Jitan" width="246" height="64"></a>
-  <nav class="nav" aria-label="Hoofdmenu">{links}
-    <a class="btn btn-red" href="{LINKS['invite']}"{ext(LINKS['invite'])}>Nodig Ashvien uit {icon('arrow-up-right')}</a>
+    return f'''<header class="site-header">
+  <a class="logo" href="/" aria-label="Ashvien Jitan, naar de homepage"><img src="/logo/aj-lockup-op-donker.svg" alt="Ashvien Jitan" width="308" height="54"></a>
+  <nav class="nav" aria-label="Hoofdmenu">{links}</nav>
+  <div class="header-actions">
+    {pill("Nodig Ashvien uit", LINKS["invite"], "ghost", "arrow-up-right", "header-cta")}
     <button class="menu-toggle" type="button" aria-label="Menu openen" aria-expanded="false" aria-controls="mobile-menu">{icon('menu')}</button>
-  </nav>
+  </div>
 </header>'''
 
 
@@ -131,23 +150,23 @@ def mobile_menu():
              ("Webshop", "/webshop/"), ("Agenda", "/#agenda"), ("Geven", LINKS["give"]), ("Contact", LINKS["contact"])]
     rows = []
     for n, (label, target) in enumerate(items, 1):
-        num = f'<span class="t">{e(label)}</span>'
+        t = f'<span class="t">{e(label)}</span>'
         if isinstance(target, list):
             sub = "".join(f'<li><a href="{h}"{ext(h)}>{e(l)} {icon("arrow-right")}</a></li>' for l, h in target)
-            rows.append(f'<li><button class="mm-row" type="button" data-sub="mm-sub-{n}" aria-expanded="false">{num}'
+            rows.append(f'<li><button class="mm-row" type="button" data-sub="mm-sub-{n}" aria-expanded="false">{t}'
                         f'{icon("plus", "i-plus")}{icon("minus", "i-minus")}</button>'
                         f'<ul class="mm-sub" id="mm-sub-{n}">{sub}</ul></li>')
         else:
-            rows.append(f'<li><a class="mm-row" href="{target}"{ext(target)}>{num}{icon("arrow-up-right")}</a></li>')
+            rows.append(f'<li><a class="mm-row" href="{target}"{ext(target)}>{t}{icon("arrow-up-right")}</a></li>')
     return f'''<div class="mobile-menu" id="mobile-menu" aria-hidden="true" role="dialog" aria-label="Menu">
   <div>
-    <div class="bar"><a href="/"><img src="/logo/aj-lockup-op-donker.svg" alt="Ashvien Jitan"></a>
+    <div class="bar"><a href="/"><img src="/logo/aj-lockup-op-donker.svg" alt="Ashvien Jitan" width="308" height="54"></a>
       <button class="menu-close" type="button" aria-label="Menu sluiten">{icon('x')}</button></div>
     <ul class="mm-list">{''.join(rows)}</ul>
   </div>
   <div class="mm-bottom">
-    <a class="btn btn-red" href="{LINKS['invite']}"{ext(LINKS['invite'])}>Nodig Ashvien uit {icon('arrow-up-right')}</a>
-    <a class="btn btn-ghost" href="{LINKS['jesus']}"{ext(LINKS['jesus'])}>Ik wil Jezus leren kennen</a>
+    {pill("Nodig Ashvien uit", LINKS["invite"], "mint", "arrow-up-right")}
+    {pill("Ik wil Jezus leren kennen", LINKS["jesus"], "ghost")}
     <div class="mm-social"><div class="icons">
       <a href="{LINKS['youtube']}" target="_blank" rel="noopener" aria-label="YouTube">{icon('youtube')}</a>
       <a href="{LINKS['instagram']}" target="_blank" rel="noopener" aria-label="Instagram">{icon('instagram')}</a>
@@ -158,10 +177,10 @@ def mobile_menu():
 
 
 def jesus_cta():
-    return f'''<section class="jesus">
-  <div><span class="label">De belangrijkste keuze van je leven</span>
-    <h2 class="display">Ik wil de Here Jezus<br>leren kennen.</h2></div>
-  <a class="btn btn-ink" href="{LINKS['jesus']}"{ext(LINKS['jesus'])}>Zet de eerste stap {icon('arrow-up-right')}</a>
+    return f'''<section class="jesus center">
+  <h2>Ik wil de Here Jezus leren kennen.</h2>
+  <p>De belangrijkste keuze van je leven. Je hoeft hem niet alleen te maken.</p>
+  {pill("Zet de eerste stap", LINKS["jesus"], "mint", "arrow-right")}
 </section>'''
 
 
@@ -172,9 +191,9 @@ def footer():
     return f'''<footer class="site-footer">
   <div class="foot-top">
     <div class="foot-brand">
-      <img src="/logo/aj-lockup-op-donker.svg" alt="Ashvien Jitan" width="246" height="64">
-      <p>Ontvang nieuwe preken en boeken in je inbox via de nieuwsbrief van Faith Generation.</p>
-      <a class="link" href="{LINKS['newsletter']}" target="_blank" rel="noopener">Schrijf je in {icon('arrow-up-right')}</a>
+      <img src="/logo/aj-lockup-op-donker.svg" alt="Ashvien Jitan" width="308" height="54">
+      <p>Nieuwe preken en boeken in je inbox via de nieuwsbrief van Faith Generation.</p>
+      {pill("Schrijf je in", LINKS["newsletter"], "ghost", "arrow-up-right")}
     </div>
     <div class="foot-cols">
       {col("Navigatie", [("Over Ashvien", "/over-ashvien/"), ("Onderwijs", "/onderwijs/"), ("Webshop", "/webshop/"),
@@ -184,7 +203,6 @@ def footer():
       {col("Volg Ashvien", [("YouTube", LINKS["youtube"]), ("Instagram", LINKS["instagram"]), ("Facebook", LINKS["facebook"])])}
     </div>
   </div>
-  <p class="foot-mark" aria-hidden="true">ASHVIEN JITAN</p>
   <div class="foot-bottom">
     <span>© {dt.date.today().year} Ashvien Jitan · Onderdeel van Stichting Faith Generation</span>
     <span><a href="{LINKS['privacy']}" target="_blank" rel="noopener">Privacy</a> · <a href="{FG}" target="_blank" rel="noopener">faithgeneration.com</a></span>
@@ -226,11 +244,11 @@ def page(title, description, current, main, head_inside=False, schema=(), preloa
 <meta property="og:description" content="{e(description)}">
 <meta property="og:image" content="{SITE_URL}/img/hero.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0b0b0b">
+<meta name="theme-color" content="#0b1f1c">
 <link rel="icon" href="/logo/aj-favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/logo/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
 {pre}{ld}
 </head>
@@ -250,33 +268,26 @@ def page(title, description, current, main, head_inside=False, schema=(), preloa
 
 # ---------- Reusable blocks ----------
 
-def eyebrow(label):
-    return f'<p class="eyebrow label red">{label}</p>'
+def short_date(iso):
+    d = dt.date.fromisoformat(iso)
+    return f"{d.day} {MONTHS_NL[d.month - 1].lower()}"
 
 
-def sermon_block(sermons, list_count=4):
+def sermon_block(sermons, list_count=3):
     if not sermons:
-        return f'<p class="empty">Bekijk alle preken op <a class="link" href="{LINKS["youtube"]}">YouTube</a>.</p>'
+        return f'<p class="empty">Bekijk alle preken op <a href="{LINKS["youtube"]}">YouTube</a>.</p>'
     # Prefer a full service as the featured video; fall back to the newest upload.
     featured = next((s for s in sermons if sources.sermon_kind(s["title"]) in ("Genezingsdienst", "Healing Night")), sermons[0])
     rest = [s for s in sermons if s is not featured][:list_count]
-    items = "".join(f'''<li><a href="https://www.youtube.com/watch?v={s['id']}" target="_blank" rel="noopener">
+    cards = "".join(f'''<a class="video-card" href="https://www.youtube.com/watch?v={s['id']}" target="_blank" rel="noopener">
       <img src="{yt_thumb(s['id'], 'mqdefault')}" alt="" loading="lazy" width="320" height="180">
-      <div><p class="small-label mute meta">{nl_date(s['date'])} · {e(sources.sermon_kind(s['title']))}</p>
-      <h4>{e(sources.clean_title(s['title']))}</h4></div></a></li>''' for s in rest)
-    return f'''<div class="sermons">
-    <div class="featured">
-      <a class="video" data-id="{featured['id']}" href="https://www.youtube.com/watch?v={featured['id']}" aria-label="Speel af: {e(featured['title'])}"
-         style="background-image:url('{yt_thumb(featured['id'], 'maxresdefault')}'), url('{yt_thumb(featured['id'])}')">
-        <span class="play">{icon('play')}</span></a>
-      <div class="featured-meta"><span class="small-label badge">{"Nieuwste" if featured is sermons[0] else "Uitgelicht"}</span>
-        <span class="small-label mute">{nl_date(featured['date'])} · {e(sources.sermon_kind(featured['title']))}</span></div>
-      <h3>{e(sources.clean_title(featured['title']))}</h3>
-    </div>
-    <div><ul class="sermon-list">{items}</ul>
-      <p style="margin-top:28px"><a class="link" href="{LINKS['youtube']}" target="_blank" rel="noopener">Alle preken op YouTube {icon('arrow-up-right')}</a></p></div>
-  </div>
-  <p class="auto-note">{icon('refresh')} Wordt automatisch bijgewerkt vanuit het YouTube-kanaal van Faith Generation</p>'''
+      <p class="meta">{short_date(s['date'])} · {e(sources.sermon_kind(s['title']))}</p>
+      <h3>{e(sources.clean_title(s['title']))}</h3></a>''' for s in rest)
+    return f'''<a class="video" data-id="{featured['id']}" href="https://www.youtube.com/watch?v={featured['id']}" aria-label="Speel af: {e(sources.clean_title(featured['title']))}"
+     style="background-image:url('{yt_thumb(featured['id'], 'maxresdefault')}'), url('{yt_thumb(featured['id'])}')">
+    <span class="play">{icon('play')}</span></a>
+  <p class="featured-caption"><span>{short_date(featured['date'])} · {e(sources.sermon_kind(featured['title']))}</span> {e(sources.clean_title(featured['title']))}</p>
+  <div class="video-cards">{cards}</div>'''
 
 
 def book_cards(books, eager=0):
@@ -284,7 +295,6 @@ def book_cards(books, eager=0):
     for i, b in enumerate(books):
         t = b["title"].lower()
         cats = " ".join(c for c, keys in BOOK_CATEGORIES.items() if any(k in t for k in keys))
-        num = f"Boek {b['num']:02d}" if b["num"] else "Boek"
         cover = ""
         if b["cover"]:
             src, srcset = e(b["cover"]), ""
@@ -293,35 +303,35 @@ def book_cards(books, eager=0):
                 srcset = (f' srcset="{e(base)}-300x300.png 300w, {e(base)}-600x600.png 600w, {src} 1080w"'
                           f' sizes="(max-width: 760px) 45vw, 22vw" onerror="this.removeAttribute(\'srcset\')"')
             cover = f'<img src="{src}"{srcset} alt="Omslag: {e(b["title"])}" loading="{"eager" if i < eager else "lazy"}" width="300" height="300">'
+        num = f'<span class="num">Boek {b["num"]}</span>' if b["num"] else ""
         cards.append(f'''<a class="book" href="{e(b['url'])}" target="_blank" rel="noopener" data-cat="{cats}">
       <div class="cover">{cover}</div>
-      <div class="meta small-label"><span class="mute">{num}</span><span class="red">{e(b['price'])}</span></div>
-      <h3>{e(b['title'])}</h3>
-      <span class="order">Bestel gratis {icon('arrow-up-right')}</span></a>''')
+      {num}<h3>{e(b['title'])}</h3>
+      <span class="order">{e(b['price'])} · bestellen {icon('arrow-right')}</span></a>''')
     return "".join(cards)
 
 
 def package_banner(books):
     pkg = next((b for b in books if "pakket" in b["title"].lower()), None)
     href = pkg["url"] if pkg else LINKS["shop"]
-    return f'''<div class="package"><div><h3>Boekpakket — boek 1 t/m 20</h3>
-    <p class="mute">Alle twintig Nederlandse boeken in één pakket.</p></div>
-    <a class="btn btn-red" href="{e(href)}" target="_blank" rel="noopener">Naar de webshop {icon('arrow-up-right')}</a></div>'''
+    return f'''<div class="package"><div><h3>Alle twintig boeken in één pakket</h3>
+    <p>Boek 1 tot en met 20, via de webshop van Faith Generation.</p></div>
+    {pill("Naar het boekpakket", href, "mint", "arrow-up-right")}</div>'''
 
 
 def agenda_block(events, limit=None):
     if not events:
-        return f'<p class="empty">Er staan op dit moment geen diensten gepland. Bekijk de <a class="link" href="{LINKS["agenda"]}">agenda van Faith Generation</a>.</p>'
+        return f'<p class="empty">Er staan op dit moment geen diensten gepland. Bekijk de <a href="{LINKS["agenda"]}">agenda van Faith Generation</a>.</p>'
     rows = []
     for ev in events[:limit]:
-        times = " · ".join(t for t, _ in ev["sessions"])
-        tag = next((l for _, l in ev["sessions"] if l), "Ticket" if ev["ticket"] else "Dienst")
+        times = ", ".join(t for t, _ in ev["sessions"])
+        label = next((l for _, l in ev["sessions"] if l), "")
         city = ev["place"].split(",")[-1].strip() if ev["place"] else ""
         href = ev["ticket"] or LINKS["agenda"]
+        meta = " · ".join(x for x in (city, times, label) if x)
         rows.append(f'''<li><a href="{e(href)}" target="_blank" rel="noopener">
-      <div class="ev-date"><b>{e(ev['day'])}</b><span>{e(ev['month'])}</span></div>
-      <div class="ev-info"><h3 class="ev-title">{e(ev['title'])}</h3><p class="mute">{e(city)}{'  ·  ' if city else ''}{e(times)}</p></div>
-      <span class="ev-tag small-label">{e(tag)}</span>
+      <span class="ev-date"><b>{e(ev['day'])}</b>{e(ev['month'].lower())}</span>
+      <span class="ev-info"><b>{e(ev['title'])}</b><span>{e(meta)}</span></span>
       <span class="ev-go">{icon('arrow-up-right')}</span></a></li>''')
     return f'<ul class="events">{"".join(rows)}</ul>'
 
@@ -350,102 +360,101 @@ def event_schema(events):
     return out
 
 
+def collage():
+    cols = []
+    for i in range(5):
+        top, bottom = MOMENTS[i], MOMENTS[i + 5]
+        cols.append(f'<div class="col{" offset" if i % 2 else ""}">'
+                    + "".join(f'<img src="/img/{f}" alt="{e(a)}" loading="lazy" width="900" height="900">' for f, a in (top, bottom))
+                    + "</div>")
+    return f'<div class="collage">{"".join(cols)}</div>'
+
+
 def home(sermons, books, events):
     slides = "".join(
         (f'<video src="{s["video"]}" poster="{s["img"]}" muted playsinline loop preload="none"></video>' if s.get("video")
          else f'<img src="{s["img"]}" alt="" {"fetchpriority=high" if i == 0 else "loading=lazy"}>')
         for i, s in enumerate(HERO_SLIDES))
-    reel = "".join(f'<button type="button"{" class=active" if i == 0 else ""}>{i + 1:02d} {e(s["label"])}</button>'
-                   for i, s in enumerate(HERO_SLIDES))
-    words = ["Bijbelscholen", "Wonderen &amp; genezingen", "20 boeken", "Gospeltrucks India", "Simpel onderwijs"]
-    marquee = "".join(f"<span>{w.upper()}</span>" for w in words * 2)
-    shop_books = [b for b in books if b["num"] in (1, 6, 13, 16)] or [b for b in books if b["num"]][:4]
+    shop_books = [b for b in books if b["num"] in (1, 6, 13)] or [b for b in books if b["num"]][:3]
     main = f'''
 <section class="hero">
   <div class="hero-media" aria-hidden="true">{slides}</div>
   <div class="hero-content">
-    <p class="tag">Evangelist · Spreker · Schrijver<span class="tag-more"> · Oprichter Faith Generation</span></p>
-    <h1 class="display h-xl">Reviving a<br>generation of faith</h1>
+    {kicker("Evangelist · Faith Generation")}
+    <h1>Reviving a generation of faith</h1>
     <p class="hero-sub">Simpel Bijbelonderwijs, gratis boeken en diensten waarin mensen genezing ervaren.</p>
-    <div class="hero-foot">
-      <div class="hero-buttons">
-        <a class="btn btn-paper" href="/onderwijs/#preken">{icon('play')} Bekijk de laatste preek</a>
-        <a class="btn btn-ghost" href="{LINKS['jesus']}"{ext(LINKS['jesus'])}>Ik wil Jezus leren kennen</a>
-      </div>
-      <div class="reel" aria-label="Beelden">{reel}</div>
-    </div>
-  </div>
-</section>
-<div class="marquee" aria-hidden="true"><div class="marquee-track">{marquee}</div></div>
-
-<section class="section light">
-  <div class="section-head"><h2 class="display h-lg">Een generatie<br>van geloof opwekken.</h2>{eyebrow('Over Ashvien')}</div>
-  <div class="about-grid">
-    <img class="photo" src="/img/portret-prediking.jpg" alt="Evangelist Ashvien Jitan preekt achter een kansel" loading="lazy" width="1280" height="1920">
-    <div class="about-text">
-      <p class="lead">Ashvien Jitan is evangelist, spreker, schrijver en de oprichter van Faith Generation. Zijn missie is eenvoudig: een generatie van geloof opwekken.</p>
-      <p class="body">Met een heldere en simpele manier van onderwijs geven helpt hij mensen om het Woord van God te begrijpen en toe te passen in hun dagelijks leven. Ashvien staat bekend om zijn passie voor de Here Jezus en de wonderen en genezingen die regelmatig plaatsvinden tijdens zijn diensten.</p>
-      <p class="body">Hij schreef twintig boeken, leidt Bijbelscholen in verschillende landen en bereikt maandelijks honderdduizenden mensen via evangelisatieprojecten wereldwijd. Vooral in India, waar tientallen gospeltrucks bijna dagelijks het evangelie delen.</p>
-      <div class="stats">
-        <div class="stat"><b>20</b><span>Boeken geschreven</span></div>
-        <div class="stat"><b>14</b><span>Talen vertaald</span></div>
-        <div class="stat"><b>40</b><span>Gospeltrucks in India</span></div>
-        <div class="stat"><b class="red">200K+</b><span>Keuzes voor Jezus per maand, via de gospeltrucks</span></div>
-      </div>
-      <p><a class="link" href="/over-ashvien/">Lees het hele verhaal {icon('arrow-right')}</a></p>
+    <div class="buttons">
+      {pill("Bekijk de laatste preek", "/onderwijs/#preken", "mint", "play")}
+      {pill("Ik wil Jezus leren kennen", LINKS["jesus"], "ghost")}
     </div>
   </div>
 </section>
 
-<section class="section dark" id="onderwijs">
-  <div class="section-head"><div><h2 class="display h-lg">Elke week<br>nieuwe preken.</h2></div>
-    <nav class="tabs" aria-label="Onderwijs">
-      <a class="active" href="/onderwijs/#preken">Preken</a><a href="{LINKS['teachings']}"{ext(LINKS['teachings'])}>Faith Teachings</a>
-      <a href="{LINKS['podcast']}"{ext(LINKS['podcast'])}>Podcast</a><a href="{LINKS['bibleschool']}"{ext(LINKS['bibleschool'])}>Bijbelscholen</a></nav></div>
-  {sermon_block(sermons)}
+<section class="section center intro">
+  {kicker("Over Ashvien")}
+  <h2>Een generatie van geloof opwekken. Dat is zijn opdracht.</h2>
+  <p class="lead">Ashvien Jitan kwam op zijn veertiende tot geloof. Vandaag legt hij de Bijbel zo simpel uit dat je er morgen mee aan de slag kunt, bidt hij voor zieken en deelt hij met veertig gospeltrucks dagelijks het evangelie in India.</p>
+  {pill("Lees zijn verhaal", "/over-ashvien/", "ghost-dark", "arrow-right")}
+  <img class="wide-photo bw" src="/img/prediking-podium.jpg" alt="Ashvien Jitan preekt op een podium" loading="lazy" width="1920" height="1280">
 </section>
 
-<section class="section light">
-  <div class="section-head"><div><h2 class="display h-lg">20 boeken.<br>Gratis voor iedereen.</h2></div>
-    <p class="aside body">De boeken worden vertaald in veertien talen en wereldwijd gratis uitgedeeld. Bestel ze direct via de webshop van Faith Generation.</p></div>
-  <div class="books">{book_cards(shop_books)}</div>
-  {package_banner(books)}
+<section class="section center moments">
+  <h2 class="h-md">Mensen die Jezus leren kennen, genezen en groeien.</h2>
+  {collage()}
 </section>
 
-<section class="band" style="background-image:url('/img/gospeltruck-india.jpg')">
-  <div class="band-inner">
-    <div>{eyebrow('Gospeltrucks India')}<h2 class="display h-lg">40 trucks.<br>Elke dag het evangelie.</h2></div>
-    <div class="stat-big"><b>200.000 – 250.000</b><p>mensen per maand kiezen voor de Here Jezus en worden direct verbonden met een lokale kerk.</p>
-      <p style="margin-top:20px"><a class="link" href="{LINKS['testimonies']}" target="_blank" rel="noopener">Lees getuigenissen {icon('arrow-up-right')}</a></p></div>
+<section class="section dark center" id="onderwijs">
+  {kicker("Preken &amp; onderwijs")}
+  <h2>Elke week nieuwe preken.</h2>
+  <div class="sermons">{sermon_block(sermons)}</div>
+  {pill("Alle preken op YouTube", LINKS["youtube"], "ghost", "arrow-up-right")}
+</section>
+
+<section class="section books-teaser">
+  <div class="books-text">
+    {kicker("Boeken")}
+    <h2 class="h-md">20 boeken. Gratis voor iedereen.</h2>
+    <p>Over geloof, gebed en genezing. Vertaald in veertien talen en gratis te bestellen via de webshop van Faith Generation.</p>
+    {pill("Bekijk alle boeken", "/webshop/", "ink", "arrow-right")}
+  </div>
+  <div class="books three">{book_cards(shop_books)}</div>
+</section>
+
+<section class="trucks-wrap">
+  <div class="trucks center" style="background-image:url('/img/gospeltruck-india.jpg')">
+    {kicker("Gospeltrucks India")}
+    <h2>40 trucks. Elke dag het evangelie.</h2>
+    <p>Elke maand kiezen 200.000 tot 250.000 mensen voor de Here Jezus. Ze worden direct verbonden met een lokale kerk.</p>
+    {pill("Lees getuigenissen", LINKS["testimonies"], "ghost", "arrow-up-right")}
   </div>
 </section>
 
-<section class="section dark" id="agenda">
-  <div class="section-head"><div>{eyebrow('Agenda')}<h2 class="display h-lg">Kom langs.</h2></div>
-    <a class="link" href="{LINKS['agenda']}" target="_blank" rel="noopener">Volledige agenda {icon('arrow-up-right')}</a></div>
+<section class="section center" id="agenda">
+  {kicker("Agenda")}
+  <h2 class="h-md">Hier kun je Ashvien zien.</h2>
   {agenda_block(events, limit=6)}
+  {pill("Volledige agenda", LINKS["agenda"], "ghost-dark", "arrow-up-right")}
 </section>
 
-<section class="section light">
-  <div class="split">
-    <div class="card card-photo" style="background-image:url('/img/genezing.jpg')">
-      <span class="label red">Nodig Ashvien uit</span>
-      <h2 class="display h-md">Een genezingsdienst,<br>seminar of conferentie?</h2>
-      <p class="body">Ashvien spreekt in kerken, op conferenties en evangelisatie-events in binnen- en buitenland.</p>
-      <p class="body">Ashvien staat onder overzienerschap van pastor Jaap Dieleman.</p>
-      <ul class="formats"><li>Genezingsdiensten</li><li>Seminars &amp; trainingen</li><li>Conferenties</li><li>Revival-weekenden</li></ul>
-      <p><a class="btn btn-red" href="{LINKS['invite']}"{ext(LINKS['invite'])}>Spreekverzoek indienen {icon('arrow-up-right')}</a></p>
+<section class="cards-wrap">
+  <div class="card card-photo" style="background-image:url('/img/genezing.jpg')">
+    {kicker("Nodig Ashvien uit")}
+    <h2>Een genezingsdienst, seminar of conferentie in jouw kerk?</h2>
+    <p>Ashvien spreekt in kerken, op conferenties en revival-weekenden. Hij staat onder overzienerschap van pastor Jaap Dieleman.</p>
+    <div>{pill("Spreekverzoek indienen", LINKS["invite"], "mint", "arrow-up-right")}</div>
+  </div>
+  <div class="card card-green">
+    <div class="card-top">
+      {kicker("Geven")}
+      <h2>Bouw mee aan een generatie van geloof.</h2>
+      <p>Ashviens salaris komt uit zijn eigen bedrijven. Jouw gift gaat naar boeken, Bijbelscholen en gospeltrucks.</p>
     </div>
-    <div class="card card-dark">
-      <div style="display:grid;gap:24px"><span class="label red">Geven</span>
-        <h2 class="display h-md">Bouw mee aan een<br>generatie van geloof.</h2>
-        <p class="body">Ashviens salaris wordt volledig betaald uit zijn eigen bedrijven. Elke gift gaat dus rechtstreeks naar boeken, Bijbelscholen en gospeltrucks.</p></div>
-      <ul class="options">
-        <li><a href="{LINKS['give_partner']}" target="_blank" rel="noopener">Maandelijks partner worden {icon('arrow-right')}</a></li>
-        <li><a href="{LINKS['give_truck']}" target="_blank" rel="noopener">Sponsor een gospeltruck {icon('arrow-right')}</a></li>
-        <li><a href="{LINKS['give_big']}" target="_blank" rel="noopener">Eenmalige gift {icon('arrow-right')}</a></li></ul>
-      <p class="small-label mute anbi"><a href="{LINKS['anbi']}" target="_blank" rel="noopener">Faith Generation heeft de ANBI-status. Je gift is fiscaal aftrekbaar.</a></p>
-    </div>
+    <ul class="options">
+      <li><a href="{LINKS['give_partner']}" target="_blank" rel="noopener">Maandelijks partner worden {icon('arrow-right')}</a></li>
+      <li><a href="{LINKS['give_truck']}" target="_blank" rel="noopener">Sponsor een gospeltruck {icon('arrow-right')}</a></li>
+      <li><a href="{LINKS['give_big']}" target="_blank" rel="noopener">Eenmalige gift {icon('arrow-right')}</a></li>
+    </ul>
+    <p class="anbi"><a href="{LINKS['anbi']}" target="_blank" rel="noopener">Faith Generation heeft de ANBI-status. Je gift is fiscaal aftrekbaar.</a></p>
   </div>
 </section>
 {jesus_cta()}'''
@@ -467,46 +476,47 @@ TIMELINE = [
 ]
 
 
+def page_head(current, title, sub="", photo=None):
+    style = f' style="background-image:url(\'{photo}\')"' if photo else ""
+    return f'''<section class="page-head{' photo' if photo else ''}"{style}>
+  {header(current)}
+  <div class="page-title">
+    <h1>{title}</h1>
+    {f'<p class="sub">{sub}</p>' if sub else ''}
+  </div>
+</section>'''
+
+
 def about():
-    tl = "".join(f'<li><span class="year{" red" if y == "2022" else ""}">{y.upper()}</span><div><h3>{h}</h3><p class="body">{b}</p></div></li>'
-                 for y, h, b in TIMELINE)
+    tl = "".join(f'<li><span class="year">{y}</span><div><h3>{h}</h3><p>{b}</p></div></li>' for y, h, b in TIMELINE)
     main = f'''
-<section class="page-head photo" style="background-image:url('/img/prediking-podium.jpg')">
-  {header('/over-ashvien/')}
-  <div><span class="label crumb">Home / Over Ashvien</span>
-    <h1 class="display h-xl">Wek een generatie<br>van geloof op.</h1>
-    <p class="sub">Dat is wat God tegen Ashvien zei. En dat is precies wat hij nu doet.</p></div>
-</section>
+{page_head('/over-ashvien/', 'Wek een generatie van geloof op.', 'Dat is wat God tegen Ashvien zei. En dat is precies wat hij nu doet.', '/img/prediking-podium.jpg')}
 
-<section class="section light">
-  <div class="story">
-    <div class="story-intro">
-      <span class="label red">Hoe het allemaal begon</span>
-      <h2 class="display" style="font-size:clamp(46px,5vw,72px)">Van bekeerling tot evangelist.</h2>
-      <p class="body">Ashvien is niet christelijk opgevoed. Op veertienjarige leeftijd kwam hij tot bekering. Vanaf dat moment groeide er één verlangen: spreken over Jezus en bidden voor de zieken.</p>
-      <img src="/img/gebed.jpg" alt="Ashvien bidt voor mensen tijdens een dienst" loading="lazy">
-    </div>
-    <ol class="timeline">{tl}</ol>
+<section class="section story">
+  <div class="story-intro">
+    {kicker("Hoe het allemaal begon")}
+    <h2 class="h-md">Van bekeerling tot evangelist.</h2>
+    <p>Ashvien is niet christelijk opgevoed. Op veertienjarige leeftijd kwam hij tot bekering. Vanaf dat moment groeide er één verlangen: spreken over Jezus en bidden voor de zieken.</p>
+    <img class="bw" src="/img/gebed.jpg" alt="Ashvien bidt voor mensen tijdens een dienst" loading="lazy" width="1280" height="1920">
   </div>
+  <ol class="timeline">{tl}</ol>
 </section>
 
-<section class="section dark">
-  <h2 class="display h-lg" style="margin:0 0 64px">Waar Ashvien<br>om bekend staat.</h2>
+<section class="section dark center">
+  <h2>Waar Ashvien om bekend staat.</h2>
   <div class="known">
-    <div><img src="/img/onderwijs.jpg" alt="Ashvien geeft les" loading="lazy"><h3>Simpel onderwijs</h3>
-      <p class="body">God heeft Ashvien duidelijk de gave gegeven om te onderwijzen. Dingen die simpel zijn, weet hij nog simpeler uit te leggen. Dingen die moeilijk zijn, maakt hij juist makkelijk.</p></div>
-    <div><img src="/img/genezingsdienst.jpg" alt="Genezingsdienst met mensen die hun handen opheffen" loading="lazy"><h3>Wonderen &amp; tekenen</h3>
-      <p class="body">Ashvien vloeit in de profetische gave en in zijn diensten zijn altijd sterke wonderen en tekenen zichtbaar. Mensen worden door Gods liefde genezen van de meest heftige kwalen.</p></div>
+    <div><img class="bw" src="/img/onderwijs.jpg" alt="Ashvien geeft les" loading="lazy" width="1920" height="1063"><h3>Simpel onderwijs</h3>
+      <p>God heeft Ashvien de gave gegeven om te onderwijzen. Dingen die simpel zijn, legt hij nog simpeler uit. Dingen die moeilijk zijn, maakt hij juist makkelijk.</p></div>
+    <div><img class="bw" src="/img/genezingsdienst.jpg" alt="Genezingsdienst met mensen die hun handen opheffen" loading="lazy" width="1280" height="1920"><h3>Wonderen en tekenen</h3>
+      <p>Ashvien vloeit in de profetische gave en in zijn diensten zijn sterke wonderen en tekenen zichtbaar. Mensen worden door Gods liefde genezen van de meest heftige kwalen.</p></div>
   </div>
 </section>
 
-<section class="section light">
-  <div class="blocks">
-    <div><h3>Iedere leider heeft een leider nodig.</h3>
-      <p class="body">Pastor Jaap Dieleman is officieel de overziener van Faith Generation en van Ashvien Jitan. Zo is niemand in het lichaam van Christus onafhankelijk. We hebben elkaar namelijk nodig.</p></div>
-    <div><h3>Naast de bediening.</h3>
-      <p class="body">Ashvien is naast de bediening ook eigenaar van een aantal bedrijven. In 2018 startte hij zijn eerste bedrijf; inmiddels zijn dat meerdere bedrijven die de bediening helpen financieren en zijn volledige salaris betalen.</p></div>
-  </div>
+<section class="section blocks">
+  <div><h3>Iedere leider heeft een leider nodig.</h3>
+    <p>Pastor Jaap Dieleman is officieel de overziener van Faith Generation en van Ashvien Jitan. Zo is niemand in het lichaam van Christus onafhankelijk. We hebben elkaar namelijk nodig.</p></div>
+  <div><h3>Naast de bediening.</h3>
+    <p>Ashvien is ook eigenaar van een aantal bedrijven. In 2018 startte hij zijn eerste bedrijf; inmiddels zijn dat meerdere bedrijven die de bediening helpen financieren en zijn volledige salaris betalen.</p></div>
 </section>
 {jesus_cta()}'''
     return page("Over Ashvien Jitan | Evangelist en oprichter Faith Generation",
@@ -521,13 +531,9 @@ def shop(books):
                ("groei", "Geestelijke groei"), ("evangelisatie", "Evangelisatie")]
     ftabs = "".join(f'<a href="#" data-filter="{k}"{" class=active" if k == "alle" else ""}>{l}</a>' for k, l in filters)
     main = f'''
-<section class="page-head dark">
-  {header('/webshop/')}
-  <div class="title-row"><div><span class="label crumb red">Home / Webshop</span><h1 class="display" style="font-size:clamp(64px,12.5vw,180px);line-height:.88">Boeken.</h1></div>
-    <p class="body" style="max-width:440px;color:var(--body-dark)">Simpel onderwijs om te lezen, te herlezen en weg te geven. Alle boeken zijn gratis en worden verzonden via de webshop van Faith Generation.</p></div>
-</section>
-<div class="filters"><nav class="tabs" aria-label="Filter boeken">{ftabs}</nav><span class="small-label lang">Nederlands</span></div>
-<section class="section light" style="padding-top:56px">
+{page_head('/webshop/', 'Boeken.', 'Simpel onderwijs om te lezen, te herlezen en weg te geven. Alle boeken zijn gratis en worden verzonden via de webshop van Faith Generation.')}
+<div class="filters"><nav class="chips" aria-label="Filter boeken">{ftabs}</nav></div>
+<section class="section shop">
   <div class="books five">{book_cards(numbered, eager=5)}</div>
   {package_banner(books)}
   <p class="auto-note">{icon('refresh')} Boeken worden automatisch bijgewerkt vanuit de webshop van Faith Generation</p>
@@ -542,23 +548,21 @@ def shop(books):
 
 
 def teaching(sermons):
-    chans = [("01", "Preken", "Genezingsdiensten en preken uit kerken in binnen- en buitenland.", "#preken",
-              "/img/genezingsdienst.jpg"),
-             ("02", "Faith Teachings", "Korte, praktische lessen om direct toe te passen in je dagelijks leven.", LINKS["teachings"], "/img/onderwijs.jpg"),
-             ("03", "Podcast", "Onderwijs om onderweg te luisteren, in meerdere talen.", LINKS["podcast"], "/img/prediking-podium.jpg"),
-             ("04", "Bijbelscholen", "Een fulltime Bijbelschool in India en online Bijbelscholen in verschillende talen.", LINKS["bibleschool"], "/img/gebed.jpg")]
+    chans = [("Preken", "Genezingsdiensten en preken uit kerken in binnen- en buitenland.", "#preken", "/img/genezingsdienst.jpg"),
+             ("Faith Teachings", "Korte, praktische lessen om direct toe te passen in je dagelijks leven.", LINKS["teachings"], "/img/onderwijs.jpg"),
+             ("Podcast", "Onderwijs om onderweg te luisteren, in meerdere talen.", LINKS["podcast"], "/img/prediking-podium.jpg"),
+             ("Bijbelscholen", "Een fulltime Bijbelschool in India en online Bijbelscholen in verschillende talen.", LINKS["bibleschool"], "/img/moment-8.jpg")]
     cards = "".join(f'''<a class="channel" href="{h}"{ext(h)} style="background-image:url('{img}')">
-      <div class="top">{icon('arrow-up-right')}</div>
-      <div><h3>{t}</h3><p>{d}</p></div></a>''' for n, t, d, h, img in chans)
+      <span class="channel-go">{icon('arrow-up-right')}</span>
+      <div><h3>{t}</h3><p>{d}</p></div></a>''' for t, d, h, img in chans)
     main = f'''
-<section class="page-head dark">
-  {header('/onderwijs/')}
-  <span class="label crumb red">Home / Onderwijs</span><h1 class="display" style="font-size:clamp(64px,12.5vw,180px);line-height:.88">Onderwijs.</h1>
-</section>
-<div class="channels dark">{cards}</div>
-<section class="section dark" id="preken" style="padding-top:0">
-  <h2 class="display" style="font-size:clamp(40px,4.4vw,64px);margin-bottom:40px">Nieuwste preken</h2>
-  {sermon_block(sermons, list_count=6)}
+{page_head('/onderwijs/', 'Onderwijs.', 'Preken, korte lessen, een podcast en Bijbelscholen. Alles om het Woord van God te begrijpen en toe te passen.')}
+<section class="section dark channels-wrap"><div class="channels">{cards}</div></section>
+<section class="section dark center" id="preken">
+  <h2>Nieuwste preken</h2>
+  <div class="sermons">{sermon_block(sermons, list_count=6)}</div>
+  {pill("Alle preken op YouTube", LINKS["youtube"], "ghost", "arrow-up-right")}
+  <p class="auto-note">{icon('refresh')} Wordt automatisch bijgewerkt vanuit het YouTube-kanaal van Faith Generation</p>
 </section>
 {jesus_cta()}'''
     return page("Preken en onderwijs van Ashvien Jitan",
@@ -579,10 +583,8 @@ def main():
     pages = {"index.html": home(sermons, books, events), "over-ashvien/index.html": about(),
              "webshop/index.html": shop(books), "onderwijs/index.html": teaching(sermons)}
     not_found = page("Pagina niet gevonden | Ashvien Jitan", "Deze pagina bestaat niet (meer).", "/404.html", f'''
-<section class="page-head dark">{header('')}
-  <span class="label crumb red">404</span><h1 class="display h-xl">Deze pagina<br>bestaat niet.</h1>
-  <p style="margin-top:32px"><a class="btn btn-red" href="/">Naar de homepage {icon('arrow-right')}</a></p>
-</section>''', head_inside=True, noindex=True)
+{page_head('', 'Deze pagina bestaat niet.', 'Misschien is hij verhuisd. Begin opnieuw op de homepage.')}
+<section class="section center">{pill("Naar de homepage", "/", "ink", "arrow-right")}</section>''', head_inside=True, noindex=True)
     for path, html_out in {**pages, "404.html": not_found}.items():
         out = DIST / path
         out.parent.mkdir(parents=True, exist_ok=True)
