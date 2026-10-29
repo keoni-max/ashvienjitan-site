@@ -1,1 +1,44 @@
-[]
+[
+ {
+  "title": "Faith NL Church",
+  "day": "29–31",
+  "month": "OKT",
+  "place": "Stationsplein 20, 2907 MJ Capelle aan den IJssel, Nederland",
+  "sessions": [
+   [
+    "Do 29 okt, 19:30",
+    "Revivalweekend"
+   ],
+   [
+    "Vr 30 okt, 19:30",
+    "Revivalweekend"
+   ],
+   [
+    "Za 31 okt, 19:30",
+    "Revivalweekend"
+   ]
+  ],
+  "ticket": "",
+  "first": "2026-10-29",
+  "last": "2026-10-31"
+ },
+ {
+  "title": "Come Alive Drachten",
+  "day": "1",
+  "month": "NOV",
+  "place": "",
+  "sessions": [
+   [
+    "Zo 01 nov, 10:00",
+    "Sunday service"
+   ],
+   [
+    "Zo 01 nov, 19:30",
+    "Sunday service"
+   ]
+  ],
+  "ticket": "",
+  "first": "2026-11-01",
+  "last": "2026-11-01"
+ }
+]
